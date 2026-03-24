@@ -1,0 +1,24 @@
+# Vitaminas/Entornos virtuales
+venv/
+.venv/
+env/
+.env
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+# Archivos de distribución / compilación
+dist/
+build/
+*.egg-info/
+# Archivos de configuración de IDE (opcional, pero recomendado)
+.vscode/
+.idea/
+.project
+.pydevproject
+# Variables de entorno (¡Seguridad!)
+.env
+.flaskenv
+# Logs
+*.log

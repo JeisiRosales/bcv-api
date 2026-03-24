@@ -1,0 +1,17 @@
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    """
+    Configuración global de la aplicación utilizando Pydantic Settings.
+    Carga las variables de entorno desde un archivo .env.
+    """
+    CACHE_BACKEND: str = "memory"
+    SCRAPER_TIMEOUT_SEGUNDOS: int = 15
+    BCV_URL: str = "https://www.bcv.org.ve/"
+    FALLBACK_API_URL: str = "https://ve.dolarapi.com/v1/dolares"
+
+    # Configuración del modelo de Pydantic
+    model_config = SettingsConfigDict(env_file=".env")
+
+# Instancia global de configuración
+settings = Settings()
