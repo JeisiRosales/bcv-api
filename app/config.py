@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     Carga las variables de entorno desde un archivo .env.
     """
     CACHE_BACKEND: str = "memory"
+    CACHE_TTL_MINUTOS: int = 15  # Tiempo de vida de la caché en minutos
     SCRAPER_TIMEOUT_SEGUNDOS: int = 15
     BCV_URL: str = "https://www.bcv.org.ve/"
     FALLBACK_API_URL: str = "https://ve.dolarapi.com/v1/dolares"
