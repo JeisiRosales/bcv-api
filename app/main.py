@@ -1,34 +1,68 @@
+import asyncio
+import sys
+import logging
+
+# Configuración crítica: debe ser lo primero en ejecutarse
+if sys.platform == "win32":
+    try:
+        if not isinstance(asyncio.get_event_loop_policy(), asyncio.WindowsProactorEventLoopPolicy):
+            asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    except Exception:
+        pass
+
 from fastapi import FastAPI
-from app.config import settings
+from fastapi.middleware.cors import CORSMiddleware
 
-"""
-Punto de entrada principal para la API.
-Este módulo inicializa la aplicación FastAPI y define las rutas base de salud y configuración.
-"""
+# Importamos el router de tasas
+from app.routers import tasas
 
+# Configurar logs antes de que FastAPI empiece
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+# Log de diagnóstico para el loop
+try:
+    loop_type = type(asyncio.get_event_loop()).__name__
+    logger.info(f"--- DIAGNÓSTICO: Motor de eventos actual: {loop_type} ---")
+except Exception as e:
+    logger.warning(f"No se pudo determinar el tipo de loop: {e}")
+
+
+# Instancia principal de FastAPI
 app = FastAPI(
-    title="API Dólar BCV Venezuela",
-    description="API para obtener el valor oficial del dólar del Banco Central de Venezuela",
-    version="0.1.0"
+    title="API BCV Venezuela",
+    description="API robusta para obtener las tasas de cambio oficiales del Banco Central de Venezuela (USD y EUR).",
+    version="1.0.0",
 )
 
-@app.get("/", tags=["Health"])
+# Configuración de CORS
+# Permite que aplicaciones web (como un frontend en React o Vue) consulten la API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],      # En producción deberías especificar los dominios reales
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Incluimos las rutas de nuestro módulo de tasas
+app.include_router(tasas.router)
+
+@app.get("/", tags=["health"])
 async def root():
     """
-    Endpoint raíz que retorna el estado de la API y la configuración activa.
+    Endpoint de bienvenida y verificación de estado.
     """
     return {
-        "status": "ok",
-        "message": "API Dólar BCV inicializada - Fase 1",
-        "config": {
-            "cache": settings.CACHE_BACKEND,
-            "timeout": settings.SCRAPER_TIMEOUT_SEGUNDOS
-        }
+        "message": "Bienvenido a la API BCV Venezuela",
+        "docs": "/docs",
+        "status": "online"
     }
 
-@app.get("/health", tags=["Health"])
-async def health():
-    """
-    Endpoint simple de verificación de salud para sistemas de monitoreo.
-    """
-    return {"status": "ok"}
+if __name__ == "__main__":
+    import uvicorn
+    # Para ejecución local directa
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
