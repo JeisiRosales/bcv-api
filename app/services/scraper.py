@@ -56,9 +56,9 @@ async def fetch_tasas_bcv() -> TasasBCVResponse | None:
     """
     try:
         async with async_playwright() as p:
-            # Lanzamos Chromium en modo headless
+            # Lanzamos Chromium
             browser = await p.chromium.launch(
-                headless=False,
+                headless=settings.SCRAPER_HEADLESS,
                 args=["--disable-blink-features=AutomationControlled"]
             )
             context = await browser.new_context(

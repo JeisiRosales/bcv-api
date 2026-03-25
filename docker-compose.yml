@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  # Base de datos en memoria para la caché persistente
+  redis:
+    image: redis:7-alpine
+    container_name: bcv-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # Nuestra aplicación FastAPI con Playwright
+  api:
+    build: .
+    container_name: bcv-api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CACHE_TTL_MINUTOS=15
+      - SCRAPER_TIMEOUT_SEGUNDOS=20
+    depends_on:
+      - redis
+    restart: always

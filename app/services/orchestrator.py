@@ -1,6 +1,7 @@
 import logging
 from app.models.tasas import TasasBCVResponse
 from app.services.cache import tasas_cache
+from app.services.redis_cache import redis_cache
 from app.services.scraper import fetch_tasas_bcv
 from app.services.fallback import fetch_tasas_fallback
 
@@ -11,26 +12,36 @@ async def obtener_tasas() -> TasasBCVResponse | None:
     """
     Cerebro de la API. Decide de dónde vienen los datos siguiendo este orden de prioridad:
 
-    1. Caché fresca (< TTL)             → respuesta instantánea con fuente="cache"
-    2. BCV directo (scraper Playwright)  → guarda en caché, retorna con fuente="bcv_directo"
-    3. Caché vencida (stale)             → retorna el dato viejo con una advertencia
-    4. DolarAPI (fallback httpx)         → retorna con fuente="fallback" y advertencia
-    5. Todo falló                        → retorna None (el endpoint responderá HTTP 503)
+    0. Redis Cache (Persistente)          → respuesta rápida (Fase 6)
+    1. Caché fresca local (RAM)           → respuesta instantánea
+    2. BCV directo (scraper Playwright)    → guarda en ambas cachés
+    3. Caché vencida (stale RAM)           → retorna el dato viejo con advertencia
+    4. DolarAPI (fallback httpx)           → retorna con fuente="fallback"
+    5. Todo falló                          → retorna None
     """
 
-    # cache hit
+    # --- PASO 0: Redis Cache (Persistente entre reinicios) ---
+    dato_redis = await redis_cache.get()
+    if dato_redis is not None:
+        # Sincronizamos con la memoria local para la próxima petición súper rápida
+        tasas_cache.set(dato_redis)
+        return dato_redis
+
+    # --- PASO 1: Caché fresca local (RAM) ---
     dato_cache = tasas_cache.get()
     if dato_cache is not None:
-        logger.info("[Orchestrator] Paso 1 - CACHE HIT. Retornando dato fresco.")
+        logger.info("[Orchestrator] Paso 1 - CACHE HIT (RAM).")
         return dato_cache
 
-    logger.info("[Orchestrator] Paso 1 - CACHE MISS. Intentando scraping al BCV...")
+    logger.info("[Orchestrator] Paso 1/0 - CACHE MISS. Intentando scraping al BCV...")
 
-    # bcv directo
+    # --- PASO 2: BCV Directo ---
     dato_bcv = await fetch_tasas_bcv()
     if dato_bcv is not None:
+        # Guardamos en ambas capas de caché
         tasas_cache.set(dato_bcv)
-        logger.info("[Orchestrator] Paso 2 - BCV OK. Dato guardado en caché.")
+        await redis_cache.set(dato_bcv)
+        logger.info("[Orchestrator] Paso 2 - BCV OK. Guardado en RAM y Redis.")
         return dato_bcv
 
     logger.warning("[Orchestrator] Paso 2 - BCV FALLÓ. Buscando dato stale en caché...")
