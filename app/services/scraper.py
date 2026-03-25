@@ -28,19 +28,20 @@ async def _extraer_datos_de_pagina(page: Page) -> tuple[float | None, float | No
     usd_val, eur_val, fecha_valor_dt = None, None, None
 
     try:
-        usd_text = await page.locator("#dolar strong").inner_text(timeout=5000)
+        usd_text = await page.locator("#dolar strong").first.inner_text(timeout=5000)
         usd_val = limpiar_precio(usd_text)
     except PlaywrightTimeoutError:
         pass
 
     try:
-        eur_text = await page.locator("#euro strong").inner_text(timeout=5000)
+        eur_text = await page.locator("#euro strong").first.inner_text(timeout=5000)
         eur_val = limpiar_precio(eur_text)
     except PlaywrightTimeoutError:
         pass
 
     try:
-        fecha_str = await page.locator("span.date-display-single").get_attribute("content", timeout=3000)
+        # La página del BCV tiene múltiples span.date-display-single; .first obtiene la fecha de vigencia de las tasas
+        fecha_str = await page.locator("span.date-display-single").first.get_attribute("content", timeout=3000)
         if fecha_str:
             fecha_valor_dt = datetime.fromisoformat(fecha_str).date()
     except (PlaywrightTimeoutError, ValueError, TypeError):
